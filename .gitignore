@@ -1,0 +1,32 @@
+# editor related
+compile_commands.json
+tags
+cscope.out
+cscope.files
+.ycm_extra_conf.py
+
+# python
+env/
+venv/
+__pycache__/
+pyvenv.cfg
+pip-selfcheck.json
+
+.env
+
+# build files
+cmake-build-debug/
+.idea/
+build/
+.vscode/
+a.out
+a.exe
+nohup.out
+
+# JS
+node_modules/
+
+# temp files
+*.swp
+
+neo4j-community-4.4.21/
