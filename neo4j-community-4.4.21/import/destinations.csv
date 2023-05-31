@@ -1,23 +1,24 @@
 id,iata,country,city,airport_to_city_price,airport_to_city_duration
-1,STN,United Kingdom,London,-1,-1
+1,STN,United Kingdom,London,26.62 GBP,54 min
 2,LHR,United Kingdom,London,-1,-1
 3,LGW,United Kingdom,London,-1,-1
-4,NCE,France,Nice,-1,-1
+4,NCE,France,Nice,1.5 EUR,35 min
 5,MXP,Italy,Milan,-1,-1
-6,JSI,Greece,Skiathos,-1,-1
-7,FCO,Italy,Rome,-1,-1
-8,BCN,Spain,Barcelona,-1,-1
-9,BRU,Belgium,Brussels,-1,-1
-10,CDG,France,Paris,-1,-1
-11,MLA,Luqa,Malta,-1,-1
-12,OSL,Norway,Oslo,-1,-1
-13,ARN,Sweden,Stockholm,-1,-1
-14,LIS,Portugal,Lisabon,-1,-1
-15,OPO,Portugal,Porto,-1,-1
-16,CPH,Denmark,Copenhagen,-1,-1
-17,MAD,Spain,Madrid,-1,-1
-18,TLV,Israel,Tel Aviv,-1,-1
+6,JSI,Greece,Skiathos,3 EUR, 2.5 km walk
+7,FCO,Italy,Rome,2.2 - 14 EUR,40 min
+8,BCN,Spain,Barcelona,6 EUR,30 min
+9,BRU,Belgium,Brussels,9 EUR,20 min
+10,CDG,France,Paris,10 EUR,35 min
+11,MLA,Luqa,Malta,2 EUR,30 min
+12,OSL,Norway,Oslo,198 NOK,25 min
+13,ARN,Sweden,Stockholm,39 SEK, 20 min
+14,LIS,Portugal,Lisabon,1.5 EUR,30 min
+15,OPO,Portugal,Porto,2 EUR,30 min
+16,CPH,Denmark,Copenhagen,36 DKK,25 min
+17,MAD,Spain,Madrid,6 EUR, 40 min
+18,TLV,Israel,Tel Aviv,100 CZK, 15 min
 19,BTS,Slovakia,Bratislava,-1,-1
 20,VIE,Austria,Vienna,-1,-1
 21,BRQ,Czechia,Brno,-1,-1
 22,PRG,Czechia,Prague,-1,-1
+23,BGY,Milan,Italy,2-way: 18 EUR,60 min
