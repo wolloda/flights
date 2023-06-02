@@ -30,3 +30,4 @@ node_modules/
 *.swp
 
 neo4j-community-4.4.21/
+*.pickle

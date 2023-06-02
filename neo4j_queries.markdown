@@ -26,7 +26,7 @@ MERGE (departure_airport)-[:FLIGHT {
     departure_date: datetime(row.departure_date),
     arrival_date: datetime(row.arrival_date),
     duration: duration.inSeconds(datetime(row.departure_date), datetime(row.arrival_date)) / 60,
-    price: row.price,
+    price: toFloat(row.price),
     flight_search_url: row.flight_search_url,
     currency_code: row.currency_code,
     flight_number: row.flight_number,

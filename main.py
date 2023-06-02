@@ -1,116 +1,166 @@
-from datetime import datetime, timedelta
-import requests
-from typing import List
-from airport import Airport
-from flight import Flight
-import pickle
-import csv
+import os
+from neo4j import GraphDatabase
+from dotenv import load_dotenv
 
-def read_airports(filepath: str):
-    airports = []
-    with open(filepath, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        airports = list(map(lambda x: x['iata'], reader))
+class Neo4j:
+    def __init__(self, URI, AUTH):
+        self.URI = URI
+        self.AUTH = AUTH
 
-    return airports
+    def delete_airports(self):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
 
+            records, summary, keys = driver.execute_query(
+                "MATCH (a:Airport) DELETE a;",
+                database_="neo4j"
+            )
 
-def download_flights(airport_iatas: List, start_date: datetime, trip_length: int):
-    flights = []
-    for iata in airport_iatas:
-        limit = 32
-        dates = [start_date + timedelta(days=x) for x in range(0, trip_length)]
-        for date in dates:
-            offset = 0
-            while True:
-                URL = f"https://services-api.ryanair.com/farfnd/3/oneWayFares?departureAirportIataCode={iata}&limit={limit}&offset={offset}&outboundDepartureDateFrom={date.strftime('%Y-%m-%d')}&outboundDepartureDateTo={date.strftime('%Y-%m-%d')}"
+    def delete_flights(self):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
 
-                response = requests.get(URL)
-                try:
-                    response.raise_for_status()
-                except requests.HTTPError as ex:
-                    raise ex
-                except requests.Timeout:
-                    pass
-
-                response = response.json()
-                if response["size"] == 0:
-                    # offset past results or no flights fulfilling criteria
-                    break
-
-                flights += (response["fares"])
-                offset += limit
-    return flights
-
-def transform_flights(flights: List, adults: int, teens: int, children: int, infants: int):
-    flights_modified = []
-
-    for flight in flights:
-        outbound = flight["outbound"]
-        price_info = outbound["price"]
-
-        dep_airport = outbound["departureAirport"]
-        departure_airport = Airport(dep_airport["countryName"], dep_airport["iataCode"], dep_airport["name"], dep_airport["seoName"], dep_airport["city"])
-        departure_date = datetime.strptime(outbound["departureDate"], "%Y-%m-%dT%H:%M:%S")
-
-        arr_airport = outbound["arrivalAirport"]
-        arrival_airport = Airport(arr_airport["countryName"], arr_airport["iataCode"], arr_airport["name"], arr_airport["seoName"], arr_airport["city"])
-        arrival_date = datetime.strptime(outbound["arrivalDate"], "%Y-%m-%dT%H:%M:%S")
-
-        price = outbound["price"]["value"]
-        currency_code = outbound["price"]["currencyCode"]
-
-        flight_search_url = 'https://www.ryanair.com/cz/cs/trip/flights/select?adults={adults}&teens={teens}&children={children}&infants={infants}&dateOut={date_out}&dateIn=&isConnectedFlight=false&isReturn=false&discount=0&promoCode=&originIata={origin_iata}&destinationIata={destination_iata}&tpAdults={adults}&tpTeens={teens}&tpChildren={children}&tpInfants={infants}&tpStartDate={date_out}&tpEndDate=&tpDiscount=0&tpPromoCode=&tpOriginIata={origin_iata}'.format(adults=adults, teens=teens, children=children, infants=infants, date_out=departure_date.strftime('%Y-%m-%d'), origin_iata=departure_airport.iata_code, destination_iata=arrival_airport.iata_code)
-
-        currencies = {
-            "DKK": 3.3,
-            "EUR": 23.7,
-            "GBP": 27.4,
-            "NOK": 2,
-            "SEK": 2.1
-        }
-
-        if currency_code in currencies:
-            price *= currencies[currency_code]
-            currency_code = "CZK"
-
-        flight_key = outbound["flightKey"]
-        flight_number = outbound["flightNumber"]
-
-        flights_modified.append(Flight(departure_airport=departure_airport, arrival_airport=arrival_airport,
-                              departure_date=departure_date, arrival_date=arrival_date, price=price,
-                              flight_search_url=flight_search_url, currency_code=currency_code, flight_key=flight_key,
-                              flight_number=flight_number))
-
-    return flights_modified
-
-def save_to_csv(filepath: str, flights: List[Flight]):
-    with open(filepath, "w", newline="") as csvfile:
-        writer = csv.writer(csvfile, delimiter=",")
-        writer.writerow(["id", "departure_iata", "arrival_iata", "departure_date", "arrival_date", "price", "currency_code", "flight_number", "flight_key", "flight_search_url"])
-        for i, flight in enumerate(flights):
-            writer.writerow([i, flight.departure_airport.iata_code, flight.arrival_airport.iata_code,
-                             flight.departure_date.strftime("%Y-%m-%dT%H:%M:%S"), flight.arrival_date.strftime("%Y-%m-%dT%H:%M:%S"), flight.price, flight.currency_code,
-                             flight.flight_number, flight.flight_key, flight.flight_search_url])
-
-def main():
-    start_date =  datetime(2023, 6, 9)
-    adults = 2
-    teens = 0
-    children = 0
-    infants = 0
-
-    airport_iatas = read_airports('neo4j-community-4.4.21/import/destinations.csv')
-    flights = download_flights(airport_iatas, start_date, 8)
-    flights = transform_flights(flights, adults, teens, children, infants)
-    flights = list(filter(lambda x: x.arrival_airport.iata_code in airport_iatas, flights))
-    print(flights)
-
-    save_to_csv('neo4j-community-4.4.21/import/flights.csv', flights)
-
-    with open("flights.pickle", "wb") as outfile:
-        pickle.dump(flights, outfile)
+            records, summary, keys = driver.execute_query(
+                "MATCH ()-[f:Flight]->() DELETE f;",
+                database_="neo4j"
+            )
 
 
-if __name__ == "__main__":
-    main()
+    def import_destinations(self, filename):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
+
+            records, summary, keys = driver.execute_query(
+                """
+                LOAD CSV WITH HEADERS FROM 'file:///$filename' AS row
+                WITH row WHERE row.id IS NOT NULL
+                MERGE (a:Airport {
+                    id: row.id,
+                    iata: row.iata,
+                    country: row.country,
+                    city: row.city,
+                    airport_to_city_price: row.airport_to_city_price,
+                    airport_to_city_duration: row.airport_to_city_duration
+                })
+                RETURN *;
+                """,
+                filename=filename,
+                database_="neo4j"
+            )
+
+    def import_flights(self, filename):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
+
+            records, summary, keys = driver.execute_query(
+                """
+                LOAD CSV WITH HEADERS FROM "file:///$filename" AS row
+                WITH row WHERE row.id IS NOT NULL
+                MATCH (departure_airport: Airport {iata: row.departure_iata})
+                MATCH (arrival_airport: Airport {iata: row.arrival_iata})
+                MERGE (departure_airport)-[:FLIGHT {
+                    id: row.id,
+                    departure_date: datetime(row.departure_date),
+                    arrival_date: datetime(row.arrival_date),
+                    duration: duration.inSeconds(datetime(row.departure_date), datetime(row.arrival_date)) / 60,
+                    price: toFloat(row.price),
+                    flight_search_url: row.flight_search_url,
+                    currency_code: row.currency_code,
+                    flight_number: row.flight_number,
+                    flight_key: row.flight_key
+                    }]->(arrival_airport)
+                RETURN *;
+                """,
+                filename=filename,
+                database_="neo4j"
+            )
+
+    def find_routes2(self):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
+
+            records, summary, keys = driver.execute_query(
+                """
+                MATCH (a0:Airport {iata: "PRG"})-[f1:FLIGHT]->(a1:Airport)-[f2:FLIGHT]->(a2:Airport)-[f3:FLIGHT]->(a3:Airport)-[f4:FLIGHT]->(a4:Airport)
+                WITH
+                    *,
+                    f1.price + f2.price + f3.price + f4.price AS price
+                RETURN
+                       f1{dest: a0.city + " -> " + a1.city, time_in_city: duration.inSeconds(f2.departure_date, f1.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f2{dest: a1.city + " -> " + a2.city, time_in_city: duration.inSeconds(f3.departure_date, f2.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f3{dest: a2.city + " -> " + a3.city, time_in_city: duration.inSeconds(f4.departure_date, f3.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f4{dest: a3.city + " -> " + a4.city, .flight_number, .price, .departure_date, .flight_search_url},
+                       f4.arrival_date AS arrival_at,
+                       price
+                ORDER BY price ASC
+                LIMIT 10;
+                """,
+                database_="neo4j"
+            )
+
+            return records
+
+
+    def find_routes(self):
+        with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
+            driver.verify_connectivity()
+
+            records, summary, keys = driver.execute_query(
+                """
+                MATCH (a0:Airport {iata: "PRG"})-[f1:FLIGHT]->(a1:Airport)-[f2:FLIGHT]->(a2:Airport)-[f3:FLIGHT]->(a3:Airport)-[f4:FLIGHT]->(a4:Airport)
+                WITH
+                    *,
+                    f1.price + f2.price + f3.price + f4.price AS price,
+                    ["BRQ", "PRG", "VIE", "BTS"] as last_airports,
+                    [a0, a1, a2, a3, a4] AS cities
+                CALL {
+                    WITH a0, a1, a2, a3, a4
+                    UNWIND [a0, a1, a2, a3, a4] as cities
+                    RETURN collect(DISTINCT cities.city) as unique_cities
+                }
+                WITH *
+                WHERE
+                    datetime("2023-06-09") <= f1.departure_date < datetime("2023-06-10")
+                    AND datetime("2023-06-16") <= f4.departure_date < datetime("2023-06-17T13:00:00Z")
+                    AND f1.departure_date < f2.departure_date < f3.departure_date < f4.departure_date
+
+                    AND (datetime() + duration.inSeconds(f2.departure_date, f1.arrival_date)) <= (datetime() + duration("PT-14H"))
+                    AND (datetime() + duration.inSeconds(f3.departure_date, f2.arrival_date)) <= (datetime() + duration("PT-14H"))
+                    AND (datetime() + duration.inSeconds(f4.departure_date, f3.arrival_date)) <= (datetime() + duration("PT-14H"))
+
+                    AND (size(unique_cities) = size(cities) OR (size(unique_cities) = size(cities) - 1 AND cities[0] = cities[-1]))
+
+                    AND NOT a1.iata IN last_airports
+                    AND NOT a2.iata IN last_airports
+                    AND NOT a3.iata IN last_airports
+                    AND a4.iata IN last_airports
+                RETURN
+                       f1{dest: a0.city + " -> " + a1.city, time_in_city: duration.inSeconds(f2.departure_date, f1.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f2{dest: a1.city + " -> " + a2.city, time_in_city: duration.inSeconds(f3.departure_date, f2.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f3{dest: a2.city + " -> " + a3.city, time_in_city: duration.inSeconds(f4.departure_date, f3.arrival_date), .flight_number, .price, .departure_date, .arrival_date, .flight_search_url},
+                       f4{dest: a3.city + " -> " + a4.city, .flight_number, .price, .departure_date, .flight_search_url},
+                       f4.arrival_date AS arrival_at,
+                       price
+                ORDER BY price asc;
+                """,
+                database_="neo4j"
+            )
+
+            return records
+
+
+if __name__  == "__main__":
+    URI = "neo4j://localhost"
+    load_dotenv()
+
+    AUTH = (os.getenv("neo4j_username"), os.getenv("neo4j_password"))
+    neo4j = Neo4j(URI, AUTH)
+
+    routes = neo4j.find_routes2()
+    for route in routes:
+        print(route["f1"]["flight_search_url"])
+
+    routes = neo4j.find_routes()
+    for route in routes:
+        print(route["f1"]["flight_search_url"])
+
