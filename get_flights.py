@@ -14,7 +14,6 @@ def read_airports(filepath: str):
 
     return airports
 
-
 def download_flights(airport_iatas: List, start_date: datetime, trip_length: int):
     flights = []
     for iata in airport_iatas:
@@ -78,7 +77,7 @@ def transform_flights(flights: List, adults: int, teens: int, children: int, inf
         flight_number = outbound["flightNumber"]
 
         flights_modified.append(Flight(departure_airport=departure_airport, arrival_airport=arrival_airport,
-                              departure_date=departure_date, arrival_date=arrival_date, price=price,
+                              company="Ryanair", departure_date=departure_date, arrival_date=arrival_date, price=price,
                               flight_search_url=flight_search_url, currency_code=currency_code, flight_key=flight_key,
                               flight_number=flight_number))
 
@@ -104,7 +103,7 @@ def get_flights():
     flights = download_flights(airport_iatas, start_date, 8)
     flights = transform_flights(flights, adults, teens, children, infants)
     flights = list(filter(lambda x: x.arrival_airport.iata_code in airport_iatas, flights))
-    print(flights)
+    print(f"{len(flights)} flights exported")
 
     save_to_csv('neo4j-community-4.4.21/import/flights.csv', flights)
 

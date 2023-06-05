@@ -1,11 +1,14 @@
 import os
 from neo4j import GraphDatabase
+from datetime import datetime
 from dotenv import load_dotenv
+import get_flights
 
 class Neo4j:
     def __init__(self, URI, AUTH):
         self.URI = URI
         self.AUTH = AUTH
+        self.driver = GraphDatabase.driver(self.URI, auth=self.AUTH)
 
     def delete_airports(self):
         with GraphDatabase.driver(self.URI, auth=self.AUTH) as driver:
@@ -32,7 +35,7 @@ class Neo4j:
 
             records, summary, keys = driver.execute_query(
                 """
-                LOAD CSV WITH HEADERS FROM 'file:///$filename' AS row
+                LOAD CSV WITH HEADERS FROM 'file:///destinations.csv' AS row
                 WITH row WHERE row.id IS NOT NULL
                 MERGE (a:Airport {
                     id: row.id,
@@ -44,7 +47,6 @@ class Neo4j:
                 })
                 RETURN *;
                 """,
-                filename=filename,
                 database_="neo4j"
             )
 
@@ -54,7 +56,7 @@ class Neo4j:
 
             records, summary, keys = driver.execute_query(
                 """
-                LOAD CSV WITH HEADERS FROM "file:///$filename" AS row
+                LOAD CSV WITH HEADERS FROM "file:///flights.csv" AS row
                 WITH row WHERE row.id IS NOT NULL
                 MATCH (departure_airport: Airport {iata: row.departure_iata})
                 MATCH (arrival_airport: Airport {iata: row.arrival_iata})
@@ -71,7 +73,6 @@ class Neo4j:
                     }]->(arrival_airport)
                 RETURN *;
                 """,
-                filename=filename,
                 database_="neo4j"
             )
 
@@ -155,6 +156,19 @@ if __name__  == "__main__":
 
     AUTH = (os.getenv("neo4j_username"), os.getenv("neo4j_password"))
     neo4j = Neo4j(URI, AUTH)
+
+    neo4j.delete_flights()
+    neo4j.delete_airports()
+    start_date = datetime(2023, 6, 9)
+    airport_iatas = get_flights.read_airports("neo4j-community-4.4.21/import/destinations.csv")
+    flights = get_flights.download_flights(airport_iatas, start_date, 8)
+    flights = get_flights.transform_flights(flights, 2, 0, 0, 0)
+    print(flights)
+    flights = list(filter(lambda x: x.arrival_airport.iata_code in airport_iatas, flights))
+    get_flights.save_to_csv("neo4j-community-4.4.21/import/flights.csv", flights)
+
+    # neo4j.import_destinations("destinations.csv")
+    # neo4j.import_flights("flights.csv")
 
     routes = neo4j.find_routes2()
     for route in routes:

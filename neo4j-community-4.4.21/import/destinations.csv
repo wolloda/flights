@@ -9,7 +9,7 @@ id,iata,country,city,airport_to_city_price,airport_to_city_duration
 8,BCN,Spain,Barcelona,6 EUR,30 min
 9,BRU,Belgium,Brussels,9 EUR,20 min
 10,CDG,France,Paris,10 EUR,35 min
-11,MLA,Luqa,Malta,2 EUR,30 min
+11,MLA,Malta,Luqa,2 EUR,30 min
 12,OSL,Norway,Oslo,198 NOK,25 min
 13,ARN,Sweden,Stockholm,39 SEK, 20 min
 14,LIS,Portugal,Lisabon,1.5 EUR,30 min
@@ -21,4 +21,7 @@ id,iata,country,city,airport_to_city_price,airport_to_city_duration
 20,VIE,Austria,Vienna,-1,-1
 21,BRQ,Czechia,Brno,-1,-1
 22,PRG,Czechia,Prague,-1,-1
-23,BGY,Milan,Italy,2-way: 18 EUR,60 min
+23,BGY,Italy,Milan,2-way: 18 EUR,60 min
+24,MXP,Italy,Milan,-1,-1
+25,TRN,Italy,Turin,-1,-1
+26,BOD,France,Bordeaux,-1,-1
