@@ -1,10 +1,14 @@
+from datetime import datetime
+from typing import List
+from flight import Flight
+
 class Airline:
-    def __init__(self, adults: int, teens: int, children: int, infants: int):
+    def __init__(self):
         self.flights = []
-        self.adults = adults
-        self.teens = teens
-        self.children = children
-        self.infants = infants
+        # self.adults = adults
+        # self.teens = teens
+        # self.children = children
+        # self.infants = infants
 
     def download_flights(self, airport_iatas: List, start_date: datetime, trip_length: int):
         self.flights = self.transform_flights(self.flights, self.adults, self.teens, self.children, self.infants)
